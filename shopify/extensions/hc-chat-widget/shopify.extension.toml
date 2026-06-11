@@ -1,0 +1,6 @@
+api_version = "2024-10"
+
+[[extensions]]
+name = "H&C AI Stylist"
+handle = "hc-chat-widget"
+type = "theme"

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>H&C Widget — local dev preview</title>
+    <style>
+      body { font-family: sans-serif; margin: 40px; color: #1a1a1a; }
+      .toggle { margin: 12px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>H&C AI Stylist — local preview</h1>
+    <p>This page mimics the Shopify storefront. It sets <code>window.HC_CHAT</code>
+       (what the Liquid app-embed block injects in production) and loads the widget.</p>
+    <p class="toggle">
+      Simulate logged-in Pro customer:
+      <label><input type="checkbox" id="pro" /> isPro</label>
+      &nbsp;(reload after toggling)
+    </p>
+
+    <script>
+      const isPro = localStorage.getItem("dev_is_pro") === "1";
+      document.addEventListener("DOMContentLoaded", () => {
+        const box = document.getElementById("pro");
+        box.checked = isPro;
+        box.addEventListener("change", () => {
+          localStorage.setItem("dev_is_pro", box.checked ? "1" : "0");
+          location.reload();
+        });
+      });
+
+      // Mirrors blocks/chat_widget.liquid output:
+      window.HC_CHAT = {
+        apiBase: "http://localhost:8000",
+        isPro: isPro,
+        customerId: isPro ? "dev-123" : null,
+        customerName: isPro ? "Jordan" : null,
+      };
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

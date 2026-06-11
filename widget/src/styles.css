@@ -1,0 +1,127 @@
+/* All classes are prefixed `.hc-chat-` to avoid collisions with the Shopify
+   theme. Colors lean on H&C's professional B2B feel. */
+
+.hc-chat-root {
+  --hc-accent: #1a1a1a;
+  --hc-accent-text: #ffffff;
+  --hc-panel-bg: #ffffff;
+  --hc-user-bg: #1a1a1a;
+  --hc-bot-bg: #f2f2f2;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.hc-chat-launcher {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--hc-accent);
+  color: var(--hc-accent-text);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  transition: transform 0.15s ease;
+}
+.hc-chat-launcher:hover { transform: scale(1.06); }
+
+.hc-chat-panel {
+  position: absolute;
+  bottom: 76px;
+  right: 0;
+  width: 370px;
+  max-width: calc(100vw - 40px);
+  height: 540px;
+  max-height: calc(100vh - 120px);
+  background: var(--hc-panel-bg);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.hc-chat-panel.hc-chat-open { display: flex; }
+
+.hc-chat-header {
+  background: var(--hc-accent);
+  color: var(--hc-accent-text);
+  padding: 14px 16px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hc-chat-close {
+  background: none;
+  border: none;
+  color: var(--hc-accent-text);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.hc-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hc-chat-msg {
+  max-width: 85%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  word-wrap: break-word;
+}
+.hc-chat-msg p { margin: 0 0 6px; }
+.hc-chat-msg p:last-child { margin-bottom: 0; }
+.hc-chat-msg ul, .hc-chat-msg ol { margin: 4px 0; padding-left: 20px; }
+.hc-chat-msg a { color: inherit; text-decoration: underline; }
+
+.hc-chat-user {
+  align-self: flex-end;
+  background: var(--hc-user-bg);
+  color: #fff;
+}
+.hc-chat-bot {
+  align-self: flex-start;
+  background: var(--hc-bot-bg);
+  color: #1a1a1a;
+}
+
+.hc-chat-input-row {
+  display: flex;
+  border-top: 1px solid #e5e5e5;
+  padding: 10px;
+  gap: 8px;
+}
+.hc-chat-input {
+  flex: 1;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+.hc-chat-input:focus { border-color: var(--hc-accent); }
+.hc-chat-send {
+  background: var(--hc-accent);
+  color: var(--hc-accent-text);
+  border: none;
+  border-radius: 8px;
+  padding: 0 16px;
+  cursor: pointer;
+  font: inherit;
+}
+.hc-chat-send:disabled { opacity: 0.5; cursor: default; }

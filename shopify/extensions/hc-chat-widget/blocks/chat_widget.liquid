@@ -1,0 +1,34 @@
+{% comment %}
+  H&C AI Stylist — app-embed block.
+  Toggle on in Theme Editor → App embeds. Loads on every page, survives theme
+  updates, no theme.liquid edits required.
+
+  SECURITY: isPro is derived from Shopify's server-side `customer` object via
+  Liquid `{% if customer %}`. Never trust a client cookie/localStorage flag —
+  the Pro pricing gate depends on this being server-truthful.
+{% endcomment %}
+<script>
+  window.HC_CHAT = {
+    apiBase: {{ block.settings.api_base | json }},
+    isPro: {% if customer %}true{% else %}false{% endif %},
+    customerId: {% if customer %}{{ customer.id | json }}{% else %}null{% endif %},
+    customerName: {% if customer %}{{ customer.first_name | json }}{% else %}null{% endif %}
+  };
+</script>
+<script src="{{ 'hc-chat-widget.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "H&C AI Stylist",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_base",
+      "label": "Chat API base URL",
+      "info": "Production: use the App Proxy subpath '/apps/hc-chat' (same-origin, Shopify signs the request). Dev/testing only: a full https URL to the API.",
+      "default": "/apps/hc-chat"
+    }
+  ]
+}
+{% endschema %}
