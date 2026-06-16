@@ -1,0 +1,8 @@
+.git
+backend
+shopify
+node_modules
+widget/node_modules
+**/__pycache__
+*.pyc
+.hc_vectorstore.pkl

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "echo \"no root install\"",
+  "buildCommand": "cd widget && npm install && npm run build && cp index.prod.html dist/index.html",
+  "outputDirectory": "widget/dist"
+}

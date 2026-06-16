@@ -24,7 +24,7 @@ def test_anonymous_directive_blocks_pricing():
     content = build_user_content("show me prices", [_chunk()], is_pro=False, now_pst=_NOW)
     assert "ANONYMOUS" in content
     assert "Do NOT share pricing" in content
-    assert "account/register" in content
+    assert "pages/create-an-account" in content
 
 
 def test_pro_directive_allows_pricing():

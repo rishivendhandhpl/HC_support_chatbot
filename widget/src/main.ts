@@ -7,6 +7,9 @@ import { renderMarkdown } from "./markdown";
 import { getSessionId } from "./session";
 import type { HCChatConfig } from "./types";
 
+// Keep in sync with backend MAX_WORDS_PER_QUERY (schemas/chat.py).
+const MAX_WORDS_PER_QUERY = 200;
+
 function readConfig(): HCChatConfig {
   const cfg = window.HC_CHAT;
   return {
@@ -120,6 +123,14 @@ class ChatWidget {
   private async send(): Promise<void> {
     const text = this.input.value.trim();
     if (!text || this.busy) return;
+    const wordCount = text.split(/\s+/).length;
+    if (wordCount > MAX_WORDS_PER_QUERY) {
+      this.appendMessage(
+        "assistant",
+        `Your message is ${wordCount} words. Please keep each question to ${MAX_WORDS_PER_QUERY} words or fewer and try again.`,
+      );
+      return;
+    }
     if (!this.config.apiBase) {
       this.appendMessage("assistant", "Chat is not configured. Please try again later.");
       return;

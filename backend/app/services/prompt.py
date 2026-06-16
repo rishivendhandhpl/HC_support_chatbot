@@ -19,7 +19,7 @@ _ANON_ACCESS = (
     "USER STATUS: ANONYMOUS (not logged in). Do NOT share pricing, quotes, or "
     "deep account/order links. If asked, explain pricing is for approved Pro "
     "members only and point them to the NEW ACCOUNT application "
-    "(https://www.haircompounds.com/account/register). General info links are allowed."
+    "(https://www.haircompounds.com/pages/create-an-account). General info links are allowed."
 )
 
 _GROUNDING = (
