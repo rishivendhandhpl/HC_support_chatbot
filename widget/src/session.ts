@@ -15,6 +15,18 @@ export function getSessionId(): string {
   }
 }
 
+// Start a fresh conversation (e.g. when the demo Pro toggle flips) so history
+// and Pro-gating from the previous mode don't carry over.
+export function newSessionId(): string {
+  const id = generateId();
+  try {
+    window.sessionStorage.setItem(KEY, id);
+  } catch {
+    // sessionStorage unavailable; the returned id is still used in-memory.
+  }
+  return id;
+}
+
 function generateId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();

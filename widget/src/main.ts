@@ -4,7 +4,7 @@
 import styles from "./styles.css?inline";
 import { streamChat } from "./api";
 import { renderMarkdown } from "./markdown";
-import { getSessionId } from "./session";
+import { getSessionId, newSessionId } from "./session";
 import type { HCChatConfig } from "./types";
 
 // Keep in sync with backend MAX_WORDS_PER_QUERY (schemas/chat.py).
@@ -22,7 +22,8 @@ function readConfig(): HCChatConfig {
 
 class ChatWidget {
   private readonly config: HCChatConfig;
-  private readonly sessionId: string;
+  private sessionId: string;
+  private isPro: boolean;
   private panel!: HTMLDivElement;
   private messages!: HTMLDivElement;
   private input!: HTMLTextAreaElement;
@@ -32,6 +33,17 @@ class ChatWidget {
   constructor(config: HCChatConfig) {
     this.config = config;
     this.sessionId = getSessionId();
+    this.isPro = config.isPro;
+  }
+
+  // The config used for each request reflects the live demo toggle, not just
+  // the initial window.HC_CHAT value.
+  private requestConfig(): HCChatConfig {
+    return {
+      ...this.config,
+      isPro: this.isPro,
+      customerId: this.isPro ? (this.config.customerId ?? "demo-pro") : null,
+    };
   }
 
   mount(): void {
@@ -67,6 +79,20 @@ class ChatWidget {
     close.addEventListener("click", () => this.togglePanel());
     header.append(title, close);
 
+    // Demo control: flip between Pro (logged-in member) and standard access so
+    // the Pro gating can be shown live. In production the Shopify theme sets the
+    // real value via window.HC_CHAT.isPro.
+    const demoBar = document.createElement("label");
+    demoBar.className = "hc-chat-demo";
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.className = "hc-chat-pro-toggle";
+    toggle.checked = this.isPro;
+    toggle.addEventListener("change", () => this.setProMode(toggle.checked));
+    const demoLabel = document.createElement("span");
+    demoLabel.textContent = "Pro mode (logged-in member) — demo";
+    demoBar.append(toggle, demoLabel);
+
     this.messages = document.createElement("div");
     this.messages.className = "hc-chat-messages";
 
@@ -88,8 +114,18 @@ class ChatWidget {
     this.sendBtn.addEventListener("click", () => void this.send());
     inputRow.append(this.input, this.sendBtn);
 
-    panel.append(header, this.messages, inputRow);
+    panel.append(header, demoBar, this.messages, inputRow);
     return panel;
+  }
+
+  // Flip Pro/standard mode: start a clean conversation so the previous mode's
+  // history and gated context don't leak across the switch, then re-greet.
+  private setProMode(isPro: boolean): void {
+    if (this.busy) return;
+    this.isPro = isPro;
+    this.sessionId = newSessionId();
+    this.messages.innerHTML = "";
+    this.greet();
   }
 
   private togglePanel(): void {
@@ -101,9 +137,10 @@ class ChatWidget {
 
   private greet(): void {
     const name = this.config.customerName;
-    const hello = name
-      ? `Hi ${name}! I'm the H&C AI Stylist. How can I help with your account, orders, or products?`
-      : "Hi! I'm the H&C AI Stylist. Ask me about our extensions, textures, shipping, or returns.";
+    const who = name ? ` ${name}` : "";
+    const hello = this.isPro
+      ? `Hi${who}! **Pro mode** is on. I can help with pricing, quotes, ordering and checkout, and account/order/return links — plus all product info.`
+      : "Hi! I'm the H&C AI Stylist (**standard mode**). I can help with products, textures, hair science, shipping, and returns. Pricing, quotes, ordering, and account/order links are **Pro-only** — turn on Pro mode above to see them.";
     this.appendMessage("assistant", hello);
   }
 
@@ -144,7 +181,7 @@ class ChatWidget {
     const botEl = this.appendMessage("assistant", "…");
     let accumulated = "";
 
-    await streamChat(this.config, text, this.sessionId, {
+    await streamChat(this.requestConfig(), text, this.sessionId, {
       onToken: (chunk) => {
         accumulated += chunk;
         botEl.innerHTML = renderMarkdown(accumulated);

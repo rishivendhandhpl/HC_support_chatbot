@@ -68,6 +68,20 @@
   line-height: 1;
 }
 
+.hc-chat-demo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #555;
+  background: #fafafa;
+  border-bottom: 1px solid #ececec;
+  cursor: pointer;
+  user-select: none;
+}
+.hc-chat-demo input { cursor: pointer; margin: 0; }
+
 .hc-chat-messages {
   flex: 1;
   overflow-y: auto;
