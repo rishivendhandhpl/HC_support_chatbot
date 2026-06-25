@@ -10,6 +10,11 @@ import type { HCChatConfig } from "./types";
 // Keep in sync with backend MAX_WORDS_PER_QUERY (schemas/chat.py).
 const MAX_WORDS_PER_QUERY = 200;
 
+// Animated "thinking" indicator shown until the first token streams in.
+const THINKING_HTML =
+  '<span class="hc-chat-typing" aria-label="Thinking">' +
+  "<span></span><span></span><span></span></span>";
+
 function readConfig(): HCChatConfig {
   const cfg = window.HC_CHAT;
   return {
@@ -29,6 +34,7 @@ class ChatWidget {
   private input!: HTMLTextAreaElement;
   private sendBtn!: HTMLButtonElement;
   private busy = false;
+  private controller: AbortController | null = null;
 
   constructor(config: HCChatConfig) {
     this.config = config;
@@ -111,7 +117,8 @@ class ChatWidget {
     this.sendBtn = document.createElement("button");
     this.sendBtn.className = "hc-chat-send";
     this.sendBtn.textContent = "Send";
-    this.sendBtn.addEventListener("click", () => void this.send());
+    // While a response streams, this button becomes a Stop control.
+    this.sendBtn.addEventListener("click", () => this.onSendClick());
     inputRow.append(this.input, this.sendBtn);
 
     panel.append(header, demoBar, this.messages, inputRow);
@@ -157,6 +164,17 @@ class ChatWidget {
     return el;
   }
 
+  // The send button doubles as Stop while a response is streaming.
+  private onSendClick(): void {
+    if (this.busy) this.stop();
+    else void this.send();
+  }
+
+  // Cancel the in-flight request; streamChat resolves via onAbort.
+  private stop(): void {
+    this.controller?.abort();
+  }
+
   private async send(): Promise<void> {
     const text = this.input.value.trim();
     if (!text || this.busy) return;
@@ -173,35 +191,62 @@ class ChatWidget {
       return;
     }
 
-    this.busy = true;
-    this.sendBtn.disabled = true;
+    this.setBusy(true);
     this.input.value = "";
     this.appendMessage("user", text);
 
-    const botEl = this.appendMessage("assistant", "…");
+    const botEl = this.appendMessage("assistant", "");
+    botEl.classList.add("hc-chat-thinking");
+    botEl.innerHTML = THINKING_HTML;
     let accumulated = "";
 
-    await streamChat(this.requestConfig(), text, this.sessionId, {
-      onToken: (chunk) => {
-        accumulated += chunk;
-        botEl.innerHTML = renderMarkdown(accumulated);
-        this.messages.scrollTop = this.messages.scrollHeight;
+    this.controller = new AbortController();
+    await streamChat(
+      this.requestConfig(),
+      text,
+      this.sessionId,
+      {
+        onToken: (chunk) => {
+          if (!accumulated) botEl.classList.remove("hc-chat-thinking");
+          accumulated += chunk;
+          botEl.innerHTML = renderMarkdown(accumulated);
+          this.messages.scrollTop = this.messages.scrollHeight;
+        },
+        onDone: () => {
+          if (!accumulated) botEl.textContent = "Sorry, I didn't catch that.";
+          this.finish();
+        },
+        onError: () => {
+          botEl.classList.remove("hc-chat-thinking");
+          botEl.textContent =
+            "Sorry, something went wrong. Please call 818-922-8586 or email orders@haircompounds.com.";
+          this.finish();
+        },
+        onAbort: () => {
+          botEl.classList.remove("hc-chat-thinking");
+          if (accumulated) {
+            botEl.innerHTML =
+              renderMarkdown(accumulated) +
+              '<span class="hc-chat-stopped">Stopped</span>';
+          } else {
+            botEl.textContent = "Stopped.";
+          }
+          this.finish();
+        },
       },
-      onDone: () => {
-        if (!accumulated) botEl.textContent = "Sorry, I didn't catch that.";
-        this.finish();
-      },
-      onError: () => {
-        botEl.textContent =
-          "Sorry, something went wrong. Please call 818-922-8586 or email orders@haircompounds.com.";
-        this.finish();
-      },
-    });
+      this.controller.signal,
+    );
+  }
+
+  private setBusy(busy: boolean): void {
+    this.busy = busy;
+    this.sendBtn.textContent = busy ? "Stop" : "Send";
+    this.sendBtn.classList.toggle("hc-chat-stop", busy);
+    if (!busy) this.controller = null;
   }
 
   private finish(): void {
-    this.busy = false;
-    this.sendBtn.disabled = false;
+    this.setBusy(false);
     this.input.focus();
   }
 }

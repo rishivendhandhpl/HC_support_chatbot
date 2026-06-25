@@ -8,6 +8,15 @@ interface StreamHandlers {
   onToken: (text: string) => void;
   onDone: () => void;
   onError: (err: Error) => void;
+  // Called when the request is cancelled via the AbortSignal (Stop button).
+  onAbort?: () => void;
+}
+
+function isAbort(err: unknown, signal?: AbortSignal): boolean {
+  return (
+    signal?.aborted === true ||
+    (err instanceof DOMException && err.name === "AbortError")
+  );
 }
 
 export async function streamChat(
@@ -15,6 +24,7 @@ export async function streamChat(
   message: string,
   sessionId: string,
   handlers: StreamHandlers,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const response = await fetch(`${config.apiBase}/chat`, {
@@ -26,6 +36,7 @@ export async function streamChat(
         is_pro: config.isPro,
         customer_id: config.customerId,
       }),
+      signal,
     });
 
     if (!response.ok || !response.body) {
@@ -58,6 +69,10 @@ export async function streamChat(
     }
     handlers.onDone();
   } catch (err) {
+    if (isAbort(err, signal)) {
+      handlers.onAbort?.();
+      return;
+    }
     handlers.onError(err instanceof Error ? err : new Error(String(err)));
   }
 }
