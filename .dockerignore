@@ -18,3 +18,4 @@ widget/dist/
 *.md
 !HC_FAQ.md
 !HC_SYSTEM_INSTRUCTION.md
+!companyWiki/**

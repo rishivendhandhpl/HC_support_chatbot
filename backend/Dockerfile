@@ -7,7 +7,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     FAQ_PATH=/kb/HC_FAQ.md \
-    SYSTEM_INSTRUCTION_PATH=/kb/HC_SYSTEM_INSTRUCTION.md
+    SYSTEM_INSTRUCTION_PATH=/kb/HC_SYSTEM_INSTRUCTION.md \
+    WIKI_DIR=/kb/companyWiki
 
 WORKDIR /app
 
@@ -22,6 +23,7 @@ COPY backend/ /app/
 
 # Knowledge base lives outside /app so a dev source mount of /app won't hide it.
 COPY HC_FAQ.md HC_SYSTEM_INSTRUCTION.md /kb/
+COPY companyWiki/ /kb/companyWiki/
 
 RUN useradd --create-home --uid 1001 appuser \
     && chown -R appuser:appuser /app /kb
