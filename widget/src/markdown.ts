@@ -1,7 +1,7 @@
 // Minimal, dependency-free markdown -> safe HTML renderer.
-// Supports: escaping, **bold**, *italic*, links, unordered/ordered lists,
-// line breaks. Everything is HTML-escaped first so model output cannot inject
-// markup into the Shopify page.
+// Supports: escaping, **bold**, *italic*, links, headings, unordered/ordered
+// lists, line breaks. Everything is HTML-escaped first so model output cannot
+// inject markup into the Shopify page.
 
 function escapeHtml(text: string): string {
   return text
@@ -24,6 +24,13 @@ function inline(text: string): string {
   return out;
 }
 
+// Which list a line opens/continues, if any.
+function listKind(line: string): "ul" | "ol" | null {
+  if (/^\s*[-*]\s+/.test(line)) return "ul";
+  if (/^\s*\d+\.\s+/.test(line)) return "ol";
+  return null;
+}
+
 export function renderMarkdown(md: string): string {
   const lines = md.split("\n");
   const html: string[] = [];
@@ -36,12 +43,18 @@ export function renderMarkdown(md: string): string {
     }
   };
 
-  for (const raw of lines) {
-    const line = raw.trimEnd();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
+    // Headings (# .. ######): render as a styled subheading, never as literal
+    // "###" text. Requires whitespace after the hashes so "#tag" stays prose.
+    const headingMatch = /^\s*#{1,6}\s+(.+?)(?:\s+#+)?\s*$/.exec(line);
     const ulMatch = /^\s*[-*]\s+(.*)$/.exec(line);
     const olMatch = /^\s*\d+\.\s+(.*)$/.exec(line);
 
-    if (ulMatch) {
+    if (headingMatch) {
+      closeList();
+      html.push(`<p class="hc-md-heading">${inline(headingMatch[1])}</p>`);
+    } else if (ulMatch) {
       if (listType !== "ul") {
         closeList();
         html.push("<ul>");
@@ -56,7 +69,14 @@ export function renderMarkdown(md: string): string {
       }
       html.push(`<li>${inline(olMatch[1])}</li>`);
     } else if (line.trim() === "") {
-      closeList();
+      // Don't reset numbering when a list is merely spaced out: keep the list
+      // open across blank line(s) if the next content continues the same list.
+      if (listType) {
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === "") j++;
+        const next = j < lines.length ? listKind(lines[j]) : null;
+        if (next !== listType) closeList();
+      }
     } else {
       closeList();
       html.push(`<p>${inline(line)}</p>`);

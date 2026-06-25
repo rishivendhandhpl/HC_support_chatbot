@@ -85,7 +85,13 @@
 }
 .hc-chat-msg p { margin: 0 0 6px; }
 .hc-chat-msg p:last-child { margin-bottom: 0; }
+.hc-chat-msg p.hc-md-heading {
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+.hc-chat-msg p.hc-md-heading:first-child { margin-top: 0; }
 .hc-chat-msg ul, .hc-chat-msg ol { margin: 4px 0; padding-left: 20px; }
+.hc-chat-msg li { margin: 2px 0; }
 .hc-chat-msg a { color: inherit; text-decoration: underline; }
 
 .hc-chat-user {
