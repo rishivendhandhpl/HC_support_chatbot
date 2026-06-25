@@ -18,9 +18,12 @@ router = APIRouter(tags=["ingest"])
 
 @router.post("/ingest", response_model=IngestResponse)
 async def reindex(store: Store = Depends(get_store)) -> IngestResponse:
-    """Re-embed and re-index HC_FAQ.md + HC_SYSTEM_INSTRUCTION.md."""
+    """Re-embed and re-index HC_FAQ.md + HC_SYSTEM_INSTRUCTION.md + companyWiki/."""
     settings = get_settings()
     count, pro_only = ingest(
-        store, Path(settings.faq_path), Path(settings.system_instruction_path)
+        store,
+        Path(settings.faq_path),
+        Path(settings.system_instruction_path),
+        Path(settings.wiki_dir),
     )
     return IngestResponse(chunks_indexed=count, pro_only_chunks=pro_only)

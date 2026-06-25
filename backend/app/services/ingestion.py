@@ -90,8 +90,94 @@ def parse_markdown(content: str, source_file: str) -> list[ParsedChunk]:
     return chunks
 
 
-def parse_files(faq_path: Path, instruction_path: Path) -> list[ParsedChunk]:
-    """Parse both knowledge-base files into chunks."""
+def _clean_heading(text: str) -> str:
+    """Strip markdown emphasis / stray punctuation from a heading for metadata."""
+    return text.strip().strip("*").strip().strip("#").strip()
+
+
+def parse_wiki_markdown(content: str, source_file: str) -> list[ParsedChunk]:
+    """Chunk a long-form wiki doc: one chunk per `#`/`##` topic heading.
+
+    Unlike the FAQ (one chunk per `###` Q&A), the wiki docs use `#`/`##` for the
+    document title and major topics and `###` for sub-points. We chunk at the
+    topic level so each chunk keeps its full context, and fold `###` sub-points
+    into the topic body. The document title (first heading) becomes the chunk
+    ``section`` so citations read "<doc topic> — <file>".
+    """
+    chunks: list[ParsedChunk] = []
+    title: str | None = None
+    current_heading: str | None = None
+    buffer: list[str] = []
+
+    def flush() -> None:
+        if current_heading is None:
+            return
+        body = "\n".join(buffer).strip()
+        if not body:
+            return  # heading with no content of its own — skip
+        section = title or source_file
+        full_text = f"{current_heading}\n{body}".strip()
+        chunks.append(
+            ParsedChunk(
+                section=section,
+                question=current_heading,
+                text=full_text,
+                pro_only=_is_pro_only(section, full_text),
+                source_file=source_file,
+            )
+        )
+
+    for raw_line in content.splitlines():
+        line = raw_line.rstrip()
+        # Topic boundary = H1 or H2 (but NOT H3+, which stay inline as body).
+        if line.startswith("# ") or line.startswith("## "):
+            flush()
+            current_heading = _clean_heading(line.lstrip("#").strip())
+            if title is None:
+                title = current_heading
+            buffer = []
+        else:
+            if current_heading is not None:
+                buffer.append(line)
+    flush()
+    return chunks
+
+
+def parse_wiki_dir(
+    wiki_dir: Path, *, skip: set[Path] | None = None
+) -> list[ParsedChunk]:
+    """Scan a directory for *.md files and parse each into topic chunks.
+
+    Files are processed in a stable, sorted order and de-duplicated by resolved
+    path so no document is indexed twice. ``skip`` excludes specific files
+    (e.g. the FAQ / instruction) should they ever live under the wiki dir.
+    """
+    chunks: list[ParsedChunk] = []
+    if not wiki_dir.exists():
+        logger.warning("Wiki directory not found: %s", wiki_dir)
+        return chunks
+
+    skip_resolved = {p.resolve() for p in (skip or set())}
+    seen: set[Path] = set()
+    for md_path in sorted(wiki_dir.glob("*.md")):
+        resolved = md_path.resolve()
+        if resolved in skip_resolved or resolved in seen:
+            continue  # avoid duplicate indexing
+        seen.add(resolved)
+        doc_chunks = parse_wiki_markdown(
+            md_path.read_text(encoding="utf-8"), md_path.name
+        )
+        if not doc_chunks:
+            logger.warning("No chunks parsed from wiki doc: %s", md_path.name)
+        chunks += doc_chunks
+    logger.info("Parsed %d wiki chunks from %d files.", len(chunks), len(seen))
+    return chunks
+
+
+def parse_files(
+    faq_path: Path, instruction_path: Path, wiki_dir: Path | None = None
+) -> list[ParsedChunk]:
+    """Parse the FAQ, system instruction, and (optionally) the wiki dir."""
     chunks: list[ParsedChunk] = []
     if faq_path.exists():
         chunks += parse_markdown(faq_path.read_text(encoding="utf-8"), faq_path.name)
@@ -103,16 +189,28 @@ def parse_files(faq_path: Path, instruction_path: Path) -> list[ParsedChunk]:
         )
     else:
         logger.warning("System instruction file not found: %s", instruction_path)
+    if wiki_dir is not None:
+        chunks += parse_wiki_dir(
+            wiki_dir, skip={faq_path, instruction_path}
+        )
     return chunks
 
 
-def ingest(store: Store, faq_path: Path, instruction_path: Path) -> tuple[int, int]:
+def ingest(
+    store: Store,
+    faq_path: Path,
+    instruction_path: Path,
+    wiki_dir: Path | None = None,
+) -> tuple[int, int]:
     """Re-index the knowledge base. Returns (chunks_indexed, pro_only_count).
 
-    Idempotent: clears existing chunks then re-embeds and inserts. Works against
-    any storage backend (pgvector or in-memory).
+    Idempotent: parses the FAQ, system instruction, and every wiki doc, then
+    clears existing chunks and re-embeds/inserts them in a single atomic
+    ``replace_chunks`` call. Combining all sources into one replace means
+    re-running never produces duplicates and the wiki never wipes the FAQ.
+    Works against any storage backend (pgvector or in-memory).
     """
-    parsed = parse_files(faq_path, instruction_path)
+    parsed = parse_files(faq_path, instruction_path, wiki_dir)
     if not parsed:
         logger.warning("No chunks parsed; aborting ingest.")
         return 0, 0

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     faq_path: str = str(_REPO_ROOT / "HC_FAQ.md")
     system_instruction_path: str = str(_REPO_ROOT / "HC_SYSTEM_INSTRUCTION.md")
 
+    # Company wiki: a directory of long-form markdown docs (one chunk per
+    # topic heading). Every *.md file in here is scanned at /ingest time.
+    # Override with WIKI_DIR (e.g. in Docker).
+    wiki_dir: str = str(_REPO_ROOT / "companyWiki")
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """ALLOWED_ORIGINS is a comma-separated string; expose it as a list."""
